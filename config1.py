@@ -4,11 +4,33 @@ import pandas as pd
 from typing import Dict, List, Tuple
 
 # 그룹 설정
-WEEKLY = frozenset(['CHPY','GPTY','LFGY','QDTY','RDTY','SDTY','SLTY','ULTY','YMAG','YMAX','TSMY','XOMO','YBIT'])
-GRP_A  = frozenset(['BRKC','CRSH','FEAT','FIVY','GOOY','OARK','RBLY','RDYY','SNOY','TSLY'])
-GRP_B  = frozenset(['BABO','DIPS','FBY','GDXY','JPMO','MARO','MRNY','NVDY','PLTY','NFLY','PYPY'])
-GRP_C  = frozenset(['ABNY','AMDY','CONY','CVNY','DRAY','FIAT','GMEY','HOOY','MSFO'])
-GRP_D  = frozenset(['AIYY','AMZY','APLY','DISO','HIYY','MSTY','SMCY','WNTR','XYZY','YQQQ'])
+WEEKLY = frozenset([
+    'CHPY','GPTY','LFGY','QDTY','RDTY',
+    'SDTY','SLTY','ULTY','YMAG','YMAX'
+])
+
+GRP_A  = frozenset([
+    'BRKC','CRSH','FEAT','FIVY','GOOY',
+    'OARK','RBLY','RDYY','SNOY','TSLY',
+    'TSMY','XOMO','YBIT'   # 기존 Weekly → A 그룹 이동
+])
+
+GRP_B  = frozenset([
+    'BABO','DIPS','FBY','GDXY','JPMO',
+    'MARO','MRNY','NVDY','PLTY'
+    # 기존에 있던 NFLY, PYPY 제거 (→ C 그룹 이동)
+])
+
+GRP_C  = frozenset([
+    'ABNY','AMDY','CONY','CVNY','DRAY',
+    'FIAT','GMEY','HOOY','MSFO',
+    'NFLY','PYPY'  # 기존 B 그룹 → C 그룹 이동
+])
+
+GRP_D  = frozenset([
+    'AIYY','AMZY','APLY','DISO','HIYY',
+    'MSTY','SMCY','WNTR','XYZY','YQQQ'
+])
 
 GROUP_META = {
     '주배당': ('주배당', '#e8f5e9'),
