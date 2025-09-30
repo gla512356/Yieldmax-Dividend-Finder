@@ -12,6 +12,7 @@ from datetime import datetime, date
 from config1 import TICKER_TO_GROUP, SCHEDULE
 from time_utils1 import now_times, get_recent_next, hold_deadline_kst, KST
 
+
 # -----------------------------
 # Polygon.io 설정
 # -----------------------------
@@ -274,6 +275,7 @@ if not ticker:
     col1, col2, col3 = st.columns(3)
 
     with col1:
+        now_kst = datetime.now(KST)
         components.html(f"""
         <div style="
             background: linear-gradient(135deg, #e3f2fd, #ffffff);
@@ -282,7 +284,7 @@ if not ticker:
         ">
             <h4 style="margin:0; color:#1e88e5;">📅 오늘 날짜</h4>
             <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
-                {pd.Timestamp.now().strftime("%Y-%m-%d")}
+                {now_kst.strftime("%Y-%m-%d")}
             </p>
         </div>
         """, height=120)
