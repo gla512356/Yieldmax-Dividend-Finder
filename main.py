@@ -144,8 +144,25 @@ def build_hist_dividends_df(ticker: str) -> pd.DataFrame:
 # -----------------------------
 # Streamlit 기본 설정
 # -----------------------------
-st.set_page_config(page_title="일드맥스 ETF 배당락일/배당일 조회", page_icon="💹", layout="wide")
-st.title("💹 일드맥스 ETF 배당락일/배당일 조회")
+components.html("""
+<div style="
+    background: linear-gradient(135deg, #4cafef, #81c784);
+    padding: 24px 16px;
+    border-radius: 12px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+">
+    <h1 style="margin:0; font-size:clamp(1.4em, 5vw, 2.2em);">
+        💹 일드맥스 ETF 배당 조회
+    </h1>
+    <p style="margin:8px 0 0; font-size:clamp(0.9em, 3.5vw, 1.1em); opacity:0.9;">
+        배당락일·배당일·배당금 정보를 한눈에 확인하세요
+    </p>
+</div>
+""", height=150)
+
+
 
 # -----------------------------
 # 유틸
@@ -251,6 +268,63 @@ if "shares" not in st.session_state:
 # -----------------------------
 raw_input = st.text_input("🔍 일드맥스 ETF 티커 입력", value="", placeholder="예: TSLY, NVDY, ULTY")
 ticker = normalize_ticker(raw_input)
+
+# 카드 3개는 티커 입력 없을 때만 표시
+if not ticker:
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        components.html(f"""
+        <div style="
+            background: linear-gradient(135deg, #e3f2fd, #ffffff);
+            padding: 16px; border-radius: 12px;
+            text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        ">
+            <h4 style="margin:0; color:#1e88e5;">📅 오늘 날짜</h4>
+            <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
+                {pd.Timestamp.now().strftime("%Y-%m-%d")}
+            </p>
+        </div>
+        """, height=120)
+
+    with col2:
+        hist = yf.Ticker("USDKRW=X").history(period="5d")
+        fx_date = hist.index[-1].strftime("%Y-%m-%d") if not hist.empty else "알 수 없음"
+
+        components.html(f"""
+        <div style="
+            background: linear-gradient(135deg, #e8f5e9, #ffffff);
+            padding: 16px; border-radius: 12px;
+            text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        ">
+            <h4 style="margin:0; color:#43a047;">💱 환율</h4>
+            <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
+                1 USD = {LATEST_FX:,.2f} 원
+            </p>
+            <p style="margin:4px 0 0; font-size:0.85em; color:#666;">
+                기준일: {fx_date} 종가
+            </p>
+        </div>
+        """, height=140)
+
+    with col3:
+        now_ny, now_kst, dst_active = now_times()
+        market_status = "개장중" if 9 <= now_ny.hour < 16 else "휴장"
+
+        components.html(f"""
+        <div style="
+            background: linear-gradient(135deg, #fff3e0, #ffffff);
+            padding: 16px; border-radius: 12px;
+            text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        ">
+            <h4 style="margin:0; color:#fb8c00;">🕒 미국 시장</h4>
+            <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
+                {market_status}
+            </p>
+        </div>
+        """, height=120)
+
+
 
 if ticker != st.session_state.prev_ticker:
     st.session_state.prev_ticker = ticker
