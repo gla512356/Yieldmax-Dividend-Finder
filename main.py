@@ -7,6 +7,7 @@ import streamlit.components.v1 as components
 import yfinance as yf
 import sqlite3, time, json
 import numpy as np
+from config1 import US_MARKET_HOLIDAYS_2025
 from datetime import datetime, date
 
 from config1 import TICKER_TO_GROUP, SCHEDULE
@@ -309,24 +310,49 @@ if not ticker:
         </div>
         """, height=140)
 
-    with col3:
-        now_ny, now_kst, dst_active = now_times()
-        market_status = "개장중" if 9 <= now_ny.hour < 16 else "휴장"
+with col3:
+    now_ny, now_kst, dst_active = now_times()
 
-        components.html(f"""
-        <div style="
-            background: linear-gradient(135deg, #fff3e0, #ffffff);
-            padding: 16px; border-radius: 12px;
-            text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        ">
-            <h4 style="margin:0; color:#fb8c00;">🕒 미국 시장</h4>
-            <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
-                {market_status}
-            </p>
-        </div>
-        """, height=120)
+    # 오늘 미국 날짜
+    today_ny = now_ny.date()
 
+    # 공휴일 리스트
+    holidays = set(pd.to_datetime(US_MARKET_HOLIDAYS_2025).date)
 
+    kst_hour = now_kst.hour + now_kst.minute/60
+
+    if today_ny in holidays or today_ny.weekday() >= 5:  # 공휴일 or 주말
+        market_status = "휴장"
+    else:
+        if dst_active:  # 서머타임 (EDT)
+            if 18 <= kst_hour < 22.5:
+                market_status = "프리마켓"
+            elif 22.5 <= kst_hour or kst_hour < 5:
+                market_status = "정규장"
+            elif 5 <= kst_hour < 9:
+                market_status = "애프터마켓"
+            else:
+                market_status = "휴장"
+        else:  # 비서머타임 (EST)
+            if 19 <= kst_hour < 23.5:
+                market_status = "프리마켓"
+            elif 23.5 <= kst_hour or kst_hour < 6:
+                market_status = "정규장"
+            elif 6 <= kst_hour < 10:
+                market_status = "애프터마켓"
+            else:
+                market_status = "휴장"
+
+    components.html(f"""
+    <div style="background: linear-gradient(135deg, #fff3e0, #ffffff);
+                padding: 16px; border-radius: 12px;
+                text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+        <h4 style="margin:0; color:#fb8c00;">🕒 미국 시장</h4>
+        <p style="margin:6px 0 0; font-size:1.1em; font-weight:bold; color:#333;">
+            {market_status}
+        </p>
+    </div>
+    """, height=120)
 
 if ticker != st.session_state.prev_ticker:
     st.session_state.prev_ticker = ticker
