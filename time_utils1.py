@@ -35,8 +35,8 @@ def get_recent_next(ex_list: List, today_kst: datetime.date) -> Tuple[Optional[d
     if not dates:
         return None, None
 
-    past = [d for d in dates if d < today_kst]
-    future = [d for d in dates if d >= today_kst]
+    past   = [d for d in dates if d <= today_kst]   # 👈 today 포함
+    future = [d for d in dates if d > today_kst]
 
     recent = past[-1] if past else None
     nxt = future[0] if future else None
