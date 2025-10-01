@@ -362,9 +362,56 @@ if ticker:
     else:
         df_div_all, df_poly = build_hist_dividends_df(ticker)
         ex_dates_cfg, pay_dates_cfg, dec_dates_cfg = get_schedule(그룹키)
+        # --- 최근·다음 날짜 구하기 ---
         recent_ex, next_ex = get_recent_next(ex_dates_cfg, today_kst)
-        recent_pay, next_pay = get_recent_next(pay_dates_cfg, today_kst)
         recent_dec, next_dec = get_recent_next(dec_dates_cfg, today_kst)
+
+        # --- Polygon 데이터에서 미래 배당락일만 반영 ---
+        if not df_poly.empty:
+            future_poly = df_poly[df_poly["배당락일"].dt.date > today_kst]
+            if not future_poly.empty:
+                next_ex = future_poly["배당락일"].min()
+
+        # --- 보유 마감 시간 계산 ---
+        until_recent = hold_deadline_kst(recent_ex) if recent_ex else None
+        until_next   = hold_deadline_kst(next_ex)   if next_ex else None
+
+        # --- 최근/다음 지급일 (무조건 config1 기준) ---
+        recent_pay, next_pay = None, None
+        if recent_ex is not None:
+            ex_dates_cfg, pay_dates_cfg, dec_dates_cfg = get_schedule(그룹키)
+            # 문자열/타입 불일치 방지
+            ex_dates_cfg = [pd.to_datetime(d).date() for d in ex_dates_cfg]
+            pay_dates_cfg = [pd.to_datetime(d).date() for d in pay_dates_cfg]
+            if recent_ex in ex_dates_cfg:
+                idx = ex_dates_cfg.index(recent_ex)
+                if idx < len(pay_dates_cfg):
+                    recent_pay = pay_dates_cfg[idx]
+
+        if next_ex is not None:
+            ex_dates_cfg, pay_dates_cfg, dec_dates_cfg = get_schedule(그룹키)
+            ex_dates_cfg = [pd.to_datetime(d).date() for d in ex_dates_cfg]
+            pay_dates_cfg = [pd.to_datetime(d).date() for d in pay_dates_cfg]
+            if next_ex in ex_dates_cfg:
+                idx = ex_dates_cfg.index(next_ex)
+                if idx < len(pay_dates_cfg):
+                    next_pay = pay_dates_cfg[idx]
+
+        # --- 최근/다음 배당금 (polygon 기준) ---
+        recent_cash_usd, next_cash_usd = None, None
+        if not df_poly.empty and recent_ex is not None:
+            d_match = pd.to_datetime(df_poly["배당락일"]).dt.date == pd.to_datetime(recent_ex).date()
+            if d_match.any():
+                v = df_poly.loc[d_match, "배당금(달러)"].iloc[0]
+                if pd.notna(v) and float(v) > 0:
+                    recent_cash_usd = float(v)
+
+        if not df_poly.empty and next_ex is not None:
+            d_match = pd.to_datetime(df_poly["배당락일"]).dt.date == pd.to_datetime(next_ex).date()
+            if d_match.any():
+                v = df_poly.loc[d_match, "배당금(달러)"].iloc[0]
+                if pd.notna(v) and float(v) > 0:
+                    next_cash_usd = float(v)
 
         if not df_poly.empty:
             future_poly = df_poly[df_poly["배당락일"].dt.date > today_kst]
@@ -422,6 +469,7 @@ if ticker:
             next_dividend_text = f"{next_cash_usd:.4f} 달러 ≈ {next_cash_usd*LATEST_FX:,.2f} 원(세전)"
         else:
             next_dividend_text = "공시 전"
+        
 
         components.html(
             f"""
@@ -591,4 +639,3 @@ if ticker:
             st.warning("배당 데이터가 없습니다.")
 elif raw_input.strip():
     st.warning("영문 티커만 입력해 주세요. 예: TSLY, NVDY, ULTY")
-
