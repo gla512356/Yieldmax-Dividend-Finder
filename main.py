@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, date
 
 # 내 모듈
 from config1 import TICKER_TO_GROUP, SCHEDULE, US_MARKET_HOLIDAYS_2025
-from time_utils1 import now_times, get_recent_next, hold_deadline_kst, KST
+from time_utils1 import now_times, get_recent_next, hold_deadline_kst, KST, us_market_status
 
 # -----------------------------
 # Polygon.io 설정
@@ -212,7 +212,8 @@ def fmt_dt(d):
         dt = pd.to_datetime(d)
         if pd.isna(dt):
             return '정보 없음'
-        return dt.strftime('%Y-%m-%d %H:%M')
+        # AM/PM 표기 (예: 2025-10-09 05:00 AM)
+        return dt.strftime('%Y-%m-%d %I:%M %p')
     except Exception:
         return '정보 없음'
 
@@ -303,30 +304,9 @@ if not ticker:
         """, height=140)
     with col3:
         now_ny, now_kst, dst_active = now_times()
-        today_ny = now_ny.date()
         holidays = set(pd.to_datetime(US_MARKET_HOLIDAYS_2025).date)
-        kst_hour = now_kst.hour + now_kst.minute / 60
-        if today_ny in holidays or today_ny.weekday() >= 5:
-            market_status = "휴장"
-        else:
-            if dst_active:
-                if 18 <= kst_hour < 22.5:
-                    market_status = "프리마켓"
-                elif 22.5 <= kst_hour or kst_hour < 5:
-                    market_status = "정규장"
-                elif 5 <= kst_hour < 9:
-                    market_status = "애프터마켓"
-                else:
-                    market_status = "휴장"
-            else:
-                if 19 <= kst_hour < 23.5:
-                    market_status = "프리마켓"
-                elif 23.5 <= kst_hour or kst_hour < 6:
-                    market_status = "정규장"
-                elif 6 <= kst_hour < 10:
-                    market_status = "애프터마켓"
-                else:
-                    market_status = "휴장"
+        market_status = us_market_status(now_ny, holidays)
+                
         components.html(f"""
         <div style="background: linear-gradient(135deg, #fff3e0, #ffffff);
                     padding: 16px; border-radius: 12px;
@@ -362,15 +342,35 @@ if ticker:
     else:
         df_div_all, df_poly = build_hist_dividends_df(ticker)
         ex_dates_cfg, pay_dates_cfg, dec_dates_cfg = get_schedule(그룹키)
-        # --- 최근·다음 날짜 구하기 ---
+ 
+        # --- 최근·다음 날짜 구하기 (기본 config 기준) ---
         recent_ex, next_ex = get_recent_next(ex_dates_cfg, today_kst)
         recent_dec, next_dec = get_recent_next(dec_dates_cfg, today_kst)
 
-        # --- Polygon 데이터에서 미래 배당락일만 반영 ---
+        # --- 공시 승격 로직 ---
         if not df_poly.empty:
-            future_poly = df_poly[df_poly["배당락일"].dt.date > today_kst]
-            if not future_poly.empty:
-                next_ex = future_poly["배당락일"].min()
+            # Polygon에 오늘 이후 배당 데이터가 있으면 확인
+            poly_future = df_poly[df_poly["배당락일"].dt.date >= today_kst]
+            if not poly_future.empty:
+                ex_date_poly = poly_future["배당락일"].min().date()
+                # 오늘이 선언일이면 → "최근 배당"으로 승격
+                if next_dec == today_kst:
+                    recent_dec = next_dec
+                    recent_ex = ex_date_poly
+                    # 다음 배당은 config1의 다음 회차로 밀림
+                    try:
+                        idx = ex_dates_cfg.index(ex_date_poly)
+                        if idx + 1 < len(ex_dates_cfg):
+                            next_ex = ex_dates_cfg[idx+1]
+                            next_dec = dec_dates_cfg[idx+1]
+                        else:
+                            next_ex, next_dec = None, None
+                    except Exception:
+                        next_ex, next_dec = None, None
+                else:
+                    # 공시 전이라면 기존대로 "다음 배당"에 표시
+                    next_ex = ex_date_poly
+
 
         # --- 보유 마감 시간 계산 ---
         until_recent = hold_deadline_kst(recent_ex) if recent_ex else None
