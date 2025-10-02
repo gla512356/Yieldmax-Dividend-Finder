@@ -217,6 +217,7 @@ def fmt_dt(d):
     except Exception:
         return '정보 없음'
 
+
 # -----------------------------
 # 환율
 # -----------------------------
@@ -350,7 +351,7 @@ if ticker:
         # --- 공시 승격 로직 ---
         if not df_poly.empty:
             # Polygon에 오늘 이후 배당 데이터가 있으면 확인
-            poly_future = df_poly[df_poly["배당락일"].dt.date >= today_kst]
+            poly_future = df_poly[df_poly["배당락일"].dt.date > today_kst]
             if not poly_future.empty:
                 ex_date_poly = poly_future["배당락일"].min().date()
                 # 오늘이 선언일이면 → "최근 배당"으로 승격
@@ -431,10 +432,10 @@ if ticker:
                 v = df_div_all.loc[d_match, "배당금(달러)"].iloc[0]
                 if pd.notna(v) and float(v) > 0:
                     recent_cash_usd = float(v)
-        dividend_text = "공시 없음"
+        recent_dividend_text = "공시 없음"
         if recent_cash_usd is not None:
             recent_cash_krw = recent_cash_usd * LATEST_FX
-            dividend_text = f"{recent_cash_usd:.4f} 달러 ≈ {recent_cash_krw:,.2f} 원(세전)"
+            recent_dividend_text = f"{recent_cash_usd:.4f} 달러 ≈ {recent_cash_krw:,.2f} 원(세전)"
         fx_text = f"💱 현재 환율: 1 USD = {LATEST_FX:,.2f} 원 (전일/당일 종가)"
 
         components.html(
@@ -449,7 +450,7 @@ if ticker:
                 📝 최근 배당을 받으려면 <b>{fmt_dt(until_recent)}</b> (한국시간)까지 보유해야 합니다.
               </p>
               <p>💵 최근 배당지급일: <b>{fmt(recent_pay)}</b></p>
-              <p>💲 최근 배당금(세전): <b>{dividend_text}</b></p>
+              <p>💲 최근 배당금(세전): <b>{recent_dividend_text}</b></p>
             </div>
             <p style="font-size: 0.8em; color:#666; margin-top:-8px; margin-bottom:20px;">
               {fx_text}
@@ -465,7 +466,8 @@ if ticker:
                 if pd.notna(v) and float(v) > 0:
                     next_cash_usd = float(v)
 
-        if next_cash_usd is not None:
+        # '다음'은 반드시 오늘보다 미래여야 하며, 공시 금액도 존재해야 숫자 노출
+        if (next_cash_usd is not None) and (pd.to_datetime(next_ex).date() > today_kst):
             next_dividend_text = f"{next_cash_usd:.4f} 달러 ≈ {next_cash_usd*LATEST_FX:,.2f} 원(세전)"
         else:
             next_dividend_text = "공시 전"
