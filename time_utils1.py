@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta, time
 from typing import List, Optional, Tuple
 from config1 import US_MARKET_HOLIDAYS_2025
+from datetime import datetime
 
 KST   = pytz.timezone("Asia/Seoul")
 NY_TZ = pytz.timezone("America/New_York")
@@ -56,3 +57,17 @@ def hold_deadline_kst(ex_date: datetime.date) -> Optional[datetime]:
     ny_close = datetime.combine(ny_day, time(16, 0))
     ny_close = NY_TZ.localize(ny_close)
     return ny_close.astimezone(KST)
+
+def us_market_status(now_ny: datetime, holidays: set) -> str:
+    """뉴욕 현지 시각 기준으로 미국 시장 상태 문자열 반환"""
+    d = now_ny.date()
+    if d in holidays or now_ny.weekday() >= 5:
+        return "휴장"
+    ny_hour = now_ny.hour + now_ny.minute/60
+    if 4 <= ny_hour < 9.5:
+        return "프리마켓"
+    elif 9.5 <= ny_hour < 16:
+        return "정규장"
+    elif 16 <= ny_hour < 20:
+        return "애프터마켓"
+    return "휴장"
